@@ -1,0 +1,118 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3c.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+<meta charset="utf8"/>
+<meta http-equiv="pragma" content="no-cache"/>
+<script src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+<link href="//use.fontawesome.com/releases/v5.6.3/css/all.css" rel="stylesheet"/>
+<script src="/js/cvi_busy_lib.js"></script>
+
+<link rel="shortcut icon" href="/imgs/manholemap.png" type="image/png"/>
+<link rel="icon" href="/logo.jpg" type="image/jpeg"/>
+<link rel="apple-touch-icon" href="/logo.jpg"/>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="サイゼリア間違い探し"/>
+<title>サイゼリア間違い探し</title>
+
+<script>
+$(function(){
+	var selfInput = $(this).find( 'input[type=file]' );
+	selfInput.change( function(){
+		var id = $(this).prop('id').substring( 5 );
+		console.log( 'id=' + id );
+
+	  var file = $(this).prop('files')[0];
+		if( !file.type.match( /image\/\w+/ ) ){
+			alert( '画像ファイル以外は指定できません' );
+			return;
+		}
+
+		var reader = new FileReader();
+		if( this.files.length ){
+			if( file.type.match( 'image.*' ) ){
+				reader.onload = function(){
+					var img = new Image();
+					img.src = reader.result;
+					img.addEventListener( 'load', function(){
+						$('#img'+id).attr( 'src', img.src );
+
+						var w = img.width;
+						var h = img.height;
+
+						h = Math.round( 480 * h / w );
+						w = 480;
+
+						$('#img'+id).attr( 'width', w );
+						$('#img'+id).attr( 'height', h );
+
+						console.log( 'img' + id + ': w= ' + w + ', h=' + h );
+					})
+				};
+				reader.onerror = function( e ){
+					console.log( 'error: ' + e );
+				}
+				reader.readAsDataURL( file );
+			}
+		}
+	});
+
+	$('#form0').submit( function(){
+		var formData = new FormData();
+		formData.append( 'images', $('#image1').prop('files')[0] );
+		formData.append( 'images', $('#image2').prop('files')[0] );
+		$.ajax({
+			type: 'POST',
+			contentType: false,
+			processData: false,
+			url: '/upload',
+			data: formData,
+			success: function( result ){
+				console.log( result );
+			},
+			error: function( XMLHttpRequest, textStatus, errorThrown ){
+				console.log( textStatus + ': ' + errorThrown );
+			}
+		});
+
+		return false;
+	});
+});
+</script>
+</head>
+<body>
+
+<div class="container">
+  <form name="form0" id="form0" enctype="multipart/form-data">
+	<table class="table table-bordered">
+		<tr>
+			<td>
+      	<input type="file" id="image1" name="image1"/>
+			</td>
+			<td>
+      	<input type="file" id="image2" name="image2"/>
+			</td>
+		</tr>
+		<tr>
+			<td id="td_img1">
+				<img id="img1"/>
+			</td>
+			<td id="td_img2">
+				<img id="img2"/>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<input type="submit" class="btn btn-primary" id="compare_btn" value="比較"/>
+			</td>
+		</tr>
+	</table>
+  </form>
+</div>
+
+</body>
+</html>
