@@ -15,8 +15,8 @@ app.use( bodyParser.json() );
 app.use( express.Router() );
 app.use( express.static( __dirname + '/public' ) );
 
-var image_size = 200;
-var threshhold = 10;
+var image_size = 480;
+var threshhold = 50; // 30 でないと色の違いに気付けない？
 
 app.post( '/upload', upload.array('images'), function( req, res ){
   res.contentType( 'application/json' );
@@ -31,12 +31,12 @@ app.post( '/upload', upload.array('images'), function( req, res ){
 
     //. 画像のサイズ変換
     var path01 = path1 + '_0';
-    var option1 = { src: path1, dst: path01, width: image_size, height: image_size };
+    var option1 = { src: path1, dst: path01, width: image_size, height: image_size, ignoreAspectRatio: true };
     easyimg.resize( option1 ).then(
       function( file1 ){
         var width1 = file1.width;
         var height1 = file1.height;
-        //var img_content1 = fs.readFileSync( path01 );
+        //console.log( 'width1 = ' + width1 + ', height1 = ' + height1 );
 
         var img1 = new Image;
         img1.src = path01;
@@ -44,14 +44,15 @@ app.post( '/upload', upload.array('images'), function( req, res ){
         var ctx1 = canvas1.getContext( '2d' );
         ctx1.drawImage( img1, 0, 0, img1.width, img1.height );
         var imagedata1 = ctx1.getImageData( 0, 0, img1.width, img1.height );
+        //console.log( 'imagedata1.width = ' + imagedata1.width + ', imagedata1.height = ' + imagedata1.height );
 
         var path02 = path2 + '_0';
-        var option2 = { src: path2, dst: path02, width: image_size, height: image_size };
+        var option2 = { src: path2, dst: path02, width: image_size, height: image_size, ignoreAspectRatio: true };
         easyimg.resize( option2 ).then(
           function( file2 ){
             var width2 = file2.width;
             var height2 = file2.height;
-            //var img_content2 = fs.readFileSync( path02 );
+            //console.log( 'width2 = ' + width2 + ', height2 = ' + height2 );
 
             var img2 = new Image;
             img2.src = path02;
@@ -59,6 +60,7 @@ app.post( '/upload', upload.array('images'), function( req, res ){
             var ctx2 = canvas2.getContext( '2d' );
             ctx2.drawImage( img2, 0, 0, img2.width, img2.height );
             var imagedata2 = ctx2.getImageData( 0, 0, img2.width, img2.height );
+            //console.log( 'imagedata2.width = ' + imagedata2.width + ', imagedata2.height = ' + imagedata2.height );
 
             //. 比較
             var results = [];
@@ -88,6 +90,8 @@ app.post( '/upload', upload.array('images'), function( req, res ){
               }
               results.push( tmp );
             }
+
+            //. この時点で results は image_size(480) x image_size(480) の配列になっている
 
             fs.unlink( path1, function(e){} );
             fs.unlink( path2, function(e){} );
