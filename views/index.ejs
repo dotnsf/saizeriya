@@ -84,8 +84,12 @@ $(function(){
 			url: '/upload',
 			data: formData,
 			success: function( result ){
-				console.log( result );
-				var data = imageData.data;
+				//console.log( result );
+  	    var dc0 = document.getElementById( "canvas0" );
+  	    var dctx0 = dc0.getContext( '2d' );
+				var imageData0 = dctx0.getImageData( 0, 0, <%= settings.image_size %>, <%= settings.image_size %> );
+				var data = imageData0.data;
+				//console.log( result );
 				for( var i = 0; i < result.length; i ++ ){
 				  for( var j = 0; j < result[i].length; j ++ ){
 						if( result[i][j] == 1 ){
@@ -93,13 +97,29 @@ $(function(){
 							data[idx] = 255;
 							data[idx+1] = 0;
 							data[idx+2] = 0;
+							data[idx+3] = 255;
+						}else{
+							data[idx] = 0;
+							data[idx+1] = 0;
+							data[idx+2] = 0;
+							data[idx+3] = 0;
 						}
 				  }
 				}
+				//console.log( data );
 
-  	    var dc = document.getElementById( "canvas1" );
-  	    var dctx = dc.getContext( '2d' );
-				dctx.putImageData( imageData, 0, 0 );
+  	    //var dc = document.getElementById( "canvas1" );
+  	    //var dctx = dc.getContext( '2d' );
+				dctx0.putImageData( imageData0, 0, 0 );
+
+				$('#canvas0').click( function(){
+					var dply = $('#canvas1').css( 'display' );
+					if( dply == 'none' ){
+						$('#canvas1').css( 'display', 'block' );
+					}else{
+						$('#canvas1').css( 'display', 'none' );
+					}
+				});
 			},
 			error: function( XMLHttpRequest, textStatus, errorThrown ){
 				console.log( textStatus + ': ' + errorThrown );
@@ -110,6 +130,18 @@ $(function(){
 	});
 });
 </script>
+<style>
+#td_img1{
+  position: relative;
+}
+#canvas0{
+	width: 500;
+	height: 500;
+	position: absolute;
+	top: 12px;
+	left: 13px;
+}
+</style>
 </head>
 <body>
 
@@ -117,8 +149,8 @@ $(function(){
   <form name="form0" id="form0" enctype="multipart/form-data">
 	<table class="table table-bordered">
 		<tr>
-			<th>left</th>
-			<th>right</th>
+			<th width="510">left</th>
+			<th width="510">right</th>
 		</tr>
 		<tr>
 			<td>
@@ -132,6 +164,7 @@ $(function(){
 			<td id="td_img1">
 				<img id="img1" style="display:none;"/>
 	      <canvas id="canvas1" width="500" height="500"></canvas>
+	      <canvas id="canvas0" width="500" height="500"></canvas>
 			</td>
 			<td id="td_img2">
 				<img id="img2" style="display:none;"/>
