@@ -5,7 +5,9 @@ var express = require( 'express' ),
     multer = require( 'multer' ),
     bodyParser = require( 'body-parser' ),
     easyimg = require( 'easyimage' ),
+    ejs = require( 'ejs' ),
     fs = require( 'fs' ),
+    settings = require( './settings' ),
     app = express(),
     Image = Canvas.Image,
     upload = multer({ dest: './tmp/' } );
@@ -13,10 +15,16 @@ var express = require( 'express' ),
 app.use( bodyParser.urlencoded( { extended: true } ) );
 app.use( bodyParser.json() );
 app.use( express.Router() );
-app.use( express.static( __dirname + '/public' ) );
+//app.use( express.static( __dirname + '/public' ) );
 
-var image_size = 480;
-var threshhold = 50; // 30 でないと色の違いに気付けない？
+app.set( 'views', __dirname + '/views' );
+app.set( 'view engine', 'ejs' );
+
+var threshhold = settings.threshhold; // 30 でないと色の違いに気付けない？
+
+app.get( '/', function( req, res ){
+  res.render( 'index', { settings: settings } );
+});
 
 app.post( '/upload', upload.array('images'), function( req, res ){
   res.contentType( 'application/json' );
@@ -31,7 +39,7 @@ app.post( '/upload', upload.array('images'), function( req, res ){
 
     //. 画像のサイズ変換
     var path01 = path1 + '_0';
-    var option1 = { src: path1, dst: path01, width: image_size, height: image_size, ignoreAspectRatio: true };
+    var option1 = { src: path1, dst: path01, width: settings.image_size, height: settings.image_size, ignoreAspectRatio: true };
     easyimg.resize( option1 ).then(
       function( file1 ){
         var width1 = file1.width;
@@ -47,7 +55,7 @@ app.post( '/upload', upload.array('images'), function( req, res ){
         //console.log( 'imagedata1.width = ' + imagedata1.width + ', imagedata1.height = ' + imagedata1.height );
 
         var path02 = path2 + '_0';
-        var option2 = { src: path2, dst: path02, width: image_size, height: image_size, ignoreAspectRatio: true };
+        var option2 = { src: path2, dst: path02, width: settings.image_size, height: settings.image_size, ignoreAspectRatio: true };
         easyimg.resize( option2 ).then(
           function( file2 ){
             var width2 = file2.width;
@@ -91,7 +99,76 @@ app.post( '/upload', upload.array('images'), function( req, res ){
               results.push( tmp );
             }
 
-            //. この時点で results は image_size(480) x image_size(480) の配列になっている
+            //. この時点で results は image_resize x image_resize の２次配列になっている
+
+            var results = shapenResults( results );
+            /*
+            var _results = JSON.parse( JSON.stringify( results ) );
+            //. 周囲８ピクセル中、８ピクセルが 1 のもののみ残す  <-- まだ不充分
+            for( var y = 1; y < results.length - 1; y ++ ){
+              for( var x = 1; x < results[y].length - 1; x ++ ){
+                var n = 0;
+                if( results[y-1][x-1] == 1 ){ n ++; }
+                if( results[y-1][x] == 1 ){ n ++; }
+                if( results[y-1][x+1] == 1 ){ n ++; }
+                if( results[y][x-1] == 1 ){ n ++; }
+                if( results[y][x+1] == 1 ){ n ++; }
+                if( results[y+1][x-1] == 1 ){ n ++; }
+                if( results[y+1][x] == 1 ){ n ++; }
+                if( results[y+1][x+1] == 1 ){ n ++; }
+                _results[y][x] = ( n > 6 ? 1 : 0 );
+              }
+            }
+            for( var i = 0; i < results.length; i ++ ){
+              _results[0][i] = 0;
+              _results[results.length-1][i] = 0;
+              _results[i][0] = 0;
+              _results[i][results.length-1] = 0;
+            }
+            //. 周囲24ピクセル中、24ピクセルが 1 のもののみ残す
+            for( var y = 2; y < results.length - 2; y ++ ){
+              for( var x = 2; x < results[y].length - 2; x ++ ){
+                var n = 0;
+                if( results[y-2][x-2] == 1 ){ n ++; }
+                if( results[y-2][x-1] == 1 ){ n ++; }
+                if( results[y-2][x] == 1 ){ n ++; }
+                if( results[y-2][x+1] == 1 ){ n ++; }
+                if( results[y-2][x+2] == 1 ){ n ++; }
+                if( results[y-1][x-2] == 1 ){ n ++; }
+                if( results[y-1][x-1] == 1 ){ n ++; }
+                if( results[y-1][x] == 1 ){ n ++; }
+                if( results[y-1][x+1] == 1 ){ n ++; }
+                if( results[y-1][x+2] == 1 ){ n ++; }
+                if( results[y][x-2] == 1 ){ n ++; }
+                if( results[y][x-1] == 1 ){ n ++; }
+                if( results[y][x+1] == 1 ){ n ++; }
+                if( results[y][x+2] == 1 ){ n ++; }
+                if( results[y+1][x-2] == 1 ){ n ++; }
+                if( results[y+1][x-1] == 1 ){ n ++; }
+                if( results[y+1][x] == 1 ){ n ++; }
+                if( results[y+1][x+1] == 1 ){ n ++; }
+                if( results[y+1][x+2] == 1 ){ n ++; }
+                if( results[y+2][x-2] == 1 ){ n ++; }
+                if( results[y+2][x-1] == 1 ){ n ++; }
+                if( results[y+2][x] == 1 ){ n ++; }
+                if( results[y+2][x+1] == 1 ){ n ++; }
+                if( results[y+2][x+2] == 1 ){ n ++; }
+                _results[y][x] = ( n > 22 ? 1 : 0 );
+              }
+            }
+            for( var i = 0; i < results.length; i ++ ){
+              _results[0][i] = 0;
+              _results[1][i] = 0;
+              _results[results.length-2][i] = 0;
+              _results[results.length-1][i] = 0;
+              _results[i][0] = 0;
+              _results[i][1] = 0;
+              _results[i][results.length-2] = 0;
+              _results[i][results.length-1] = 0;
+            }
+
+            results = JSON.parse( JSON.stringify( _results ) );
+            */
 
             fs.unlink( path1, function(e){} );
             fs.unlink( path2, function(e){} );
@@ -127,6 +204,77 @@ app.post( '/upload', upload.array('images'), function( req, res ){
     res.end();
   }
 });
+
+function shapenResults( results ){
+  var _results = JSON.parse( JSON.stringify( results ) );
+
+  //. 周囲８ピクセル中、８ピクセルが 1 のもののみ残す  <-- まだ不充分
+  /*
+  for( var y = 1; y < results.length - 1; y ++ ){
+    for( var x = 1; x < results[y].length - 1; x ++ ){
+      var n = 0;
+      if( results[y-1][x-1] == 1 ){ n ++; }
+      if( results[y-1][x] == 1 ){ n ++; }
+      if( results[y-1][x+1] == 1 ){ n ++; }
+      if( results[y][x-1] == 1 ){ n ++; }
+      if( results[y][x+1] == 1 ){ n ++; }
+      if( results[y+1][x-1] == 1 ){ n ++; }
+      if( results[y+1][x] == 1 ){ n ++; }
+      if( results[y+1][x+1] == 1 ){ n ++; }
+      _results[y][x] = ( n > 6 ? 1 : 0 );
+    }
+  }
+  for( var i = 0; i < results.length; i ++ ){
+    _results[0][i] = 0;
+    _results[results.length-1][i] = 0;
+    _results[i][0] = 0;
+    _results[i][results.length-1] = 0;
+  }
+  */
+  //. 周囲24ピクセル中、24ピクセルが 1 のもののみ残す
+  for( var y = 2; y < results.length - 2; y ++ ){
+    for( var x = 2; x < results[y].length - 2; x ++ ){
+      var n = 0;
+      if( results[y-2][x-2] == 1 ){ n ++; }
+      if( results[y-2][x-1] == 1 ){ n ++; }
+      if( results[y-2][x] == 1 ){ n ++; }
+      if( results[y-2][x+1] == 1 ){ n ++; }
+      if( results[y-2][x+2] == 1 ){ n ++; }
+      if( results[y-1][x-2] == 1 ){ n ++; }
+      if( results[y-1][x-1] == 1 ){ n ++; }
+      if( results[y-1][x] == 1 ){ n ++; }
+      if( results[y-1][x+1] == 1 ){ n ++; }
+      if( results[y-1][x+2] == 1 ){ n ++; }
+      if( results[y][x-2] == 1 ){ n ++; }
+      if( results[y][x-1] == 1 ){ n ++; }
+      if( results[y][x+1] == 1 ){ n ++; }
+      if( results[y][x+2] == 1 ){ n ++; }
+      if( results[y+1][x-2] == 1 ){ n ++; }
+      if( results[y+1][x-1] == 1 ){ n ++; }
+      if( results[y+1][x] == 1 ){ n ++; }
+      if( results[y+1][x+1] == 1 ){ n ++; }
+      if( results[y+1][x+2] == 1 ){ n ++; }
+      if( results[y+2][x-2] == 1 ){ n ++; }
+      if( results[y+2][x-1] == 1 ){ n ++; }
+      if( results[y+2][x] == 1 ){ n ++; }
+      if( results[y+2][x+1] == 1 ){ n ++; }
+      if( results[y+2][x+2] == 1 ){ n ++; }
+      _results[y][x] = ( n > 22 ? 1 : 0 );
+    }
+  }
+  for( var i = 0; i < results.length; i ++ ){
+    _results[0][i] = 0;
+    _results[1][i] = 0;
+    _results[results.length-2][i] = 0;
+    _results[results.length-1][i] = 0;
+    _results[i][0] = 0;
+    _results[i][1] = 0;
+    _results[i][results.length-2] = 0;
+    _results[i][results.length-1] = 0;
+  }
+
+  return JSON.parse( JSON.stringify( _results ) );
+}
 
 var appEnv = cfenv.getAppEnv();
 var port = appEnv.port || 3000;
